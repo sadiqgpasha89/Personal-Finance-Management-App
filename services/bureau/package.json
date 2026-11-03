@@ -1,0 +1,3 @@
+{ "name": "@ledgerly/bureau", "version": "0.1.0", "private": true, "type": "module",
+  "description": "Credit bureau (CIBIL-style) report service: provider adapters, transparent factor analysis. Ships with a clearly-labelled sandbox provider.",
+  "scripts": { "start": "node src/main.ts", "test": "node --test src/*.test.ts" }, "engines": { "node": ">=22.18" } }

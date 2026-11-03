@@ -1,0 +1,25 @@
+{
+ "rows": [
+  {
+   "date": "2026-01-05",
+   "description": "WHOLE FOODS #123 AUSTIN TX",
+   "amount": -6575
+  },
+  {
+   "date": "2026-01-06",
+   "description": "ACME CORP PAYROLL DIRECT DEP",
+   "amount": 285000
+  },
+  {
+   "date": "2026-01-09",
+   "description": "NETFLIX.COM",
+   "amount": -1999
+  },
+  {
+   "date": "2026-01-12",
+   "description": "SHELL OIL 5772 FUEL",
+   "amount": -4210
+  }
+ ],
+ "kind": "ofx"
+}

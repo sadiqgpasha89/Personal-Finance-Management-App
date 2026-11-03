@@ -1,0 +1,33 @@
+{
+ "rows": [
+  {
+   "date": "2026-01-02",
+   "description": "GEHALT JANUAR",
+   "amount": 285000
+  },
+  {
+   "date": "2026-01-03",
+   "description": "REWE SAGT DANKE",
+   "amount": -4567
+  },
+  {
+   "date": "2026-01-05",
+   "description": "MIETE WOHNUNG",
+   "amount": -98000
+  },
+  {
+   "date": "2026-01-08",
+   "description": "LASTSCHRIFT STROM",
+   "amount": -7650
+  },
+  {
+   "date": "2026-01-15",
+   "description": "SPOTIFY AB",
+   "amount": -1099
+  }
+ ],
+ "opening": 120000,
+ "closing": 293684,
+ "kind": "pdf",
+ "comma": true
+}

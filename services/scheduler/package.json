@@ -1,0 +1,2 @@
+{ "name": "@ledgerly/scheduler", "version": "0.1.0", "private": true, "type": "module", "description": "Calls core's internal job endpoint on a timer: due goal contributions and stale bank-link syncs.",
+  "scripts": { "start": "node src/main.ts", "test": "node --test src/*.test.ts" }, "engines": { "node": ">=22.18" } }

@@ -1,0 +1,2 @@
+{ "name": "ledgerly", "private": true, "version": "0.2.0", "description": "Ledgerly monorepo: core app + services (aggregator, bureau, assistant, scheduler) + shared package.",
+  "scripts": { "dev:all": "node scripts/dev-all.mjs", "test:all": "node scripts/test-all.mjs", "typecheck": "npm --prefix app run typecheck", "model:download": "npm --prefix services/assistant run model:download" }, "engines": { "node": ">=22.18" } }

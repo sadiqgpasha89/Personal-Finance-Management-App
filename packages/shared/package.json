@@ -1,0 +1,1 @@
+{ "name": "@ledgerly/shared", "version": "0.1.0", "private": true, "type": "module", "main": "src/index.ts", "description": "Service-to-service auth, tiny HTTP server/client and logging shared by every Ledgerly service." }

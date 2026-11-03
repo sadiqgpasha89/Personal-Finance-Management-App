@@ -1,0 +1,68 @@
+{
+ "rows": [
+  {
+   "date": "2025-12-28",
+   "description": "AIRBNB * HMXY CITY",
+   "amount": -48000
+  },
+  {
+   "date": "2025-12-30",
+   "description": "WHOLE FOODS #123",
+   "amount": -9134
+  },
+  {
+   "date": "2026-01-02",
+   "description": "NETFLIX.COM",
+   "amount": -1999
+  },
+  {
+   "date": "2026-01-03",
+   "description": "STARBUCKS #8812",
+   "amount": -785
+  },
+  {
+   "date": "2026-01-05",
+   "description": "PAYMENT THANK YOU",
+   "amount": 90000
+  },
+  {
+   "date": "2026-01-08",
+   "description": "UBER EATS PENDING",
+   "amount": -2494
+  },
+  {
+   "date": "2026-01-09",
+   "description": "AMAZON.COM*1R7",
+   "amount": -4599
+  },
+  {
+   "date": "2026-01-12",
+   "description": "RETURN AMAZON.COM*1R7",
+   "amount": 4599
+  },
+  {
+   "date": "2026-01-15",
+   "description": "SHELL OIL 5772",
+   "amount": -4210
+  },
+  {
+   "date": "2026-01-18",
+   "description": "DOORDASH*ORDER",
+   "amount": -3815
+  },
+  {
+   "date": "2026-01-21",
+   "description": "FOREIGN TXN FEE",
+   "amount": -142
+  },
+  {
+   "date": "2026-01-22",
+   "description": "INTEREST CHARGED",
+   "amount": -9877
+  }
+ ],
+ "opening": 85000,
+ "closing": 75456,
+ "kind": "pdf",
+ "credit_card": true
+}

@@ -1,0 +1,17 @@
+# The on-device assistant: Llama 3.2 1B via llama.cpp (CPU). The model file is mounted at /models, not baked into the image.
+FROM node:22-slim AS deps
+WORKDIR /srv/services/assistant
+COPY services/assistant/package.json services/assistant/package-lock.json ./
+RUN npm ci --omit=dev \
+ && rm -rf node_modules/@node-llama-cpp/linux-x64-cuda* node_modules/@node-llama-cpp/linux-x64-vulkan node_modules/@node-llama-cpp/linux-arm64 node_modules/@node-llama-cpp/linux-armv7l node_modules/@node-llama-cpp/win-* node_modules/@node-llama-cpp/mac-*
+FROM node:22-slim
+ENV NODE_ENV=production LLAMA_MODEL_PATH=/models/Llama-3.2-1B-Instruct-Q4_K_M.gguf ASSISTANT_DB=/data/assistant.db
+WORKDIR /srv
+COPY packages/shared ./packages/shared
+COPY services/assistant ./services/assistant
+COPY --from=deps /srv/services/assistant/node_modules ./services/assistant/node_modules
+RUN rm -rf services/assistant/models && mkdir -p /data /models && chown -R node:node /data /srv
+WORKDIR /srv/services/assistant
+USER node
+HEALTHCHECK --interval=20s --timeout=3s --start-period=30s --retries=5 CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3203)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "src/main.ts"]

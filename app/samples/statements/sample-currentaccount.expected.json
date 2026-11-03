@@ -1,0 +1,47 @@
+{
+ "rows": [
+  {
+   "date": "2026-01-02",
+   "description": "SALARY JANUARY",
+   "amount": 320000
+  },
+  {
+   "date": "2026-01-03",
+   "description": "CARD PURCHASE TESCO STORES",
+   "amount": -4521
+  },
+  {
+   "date": "2026-01-05",
+   "description": "DIRECT DEBIT COUNCIL TAX",
+   "amount": -15800
+  },
+  {
+   "date": "2026-01-07",
+   "description": "FASTER PAYMENT FROM J SMITH",
+   "amount": 12000
+  },
+  {
+   "date": "2026-01-09",
+   "description": "CARD PURCHASE COSTA COFFEE",
+   "amount": -385
+  },
+  {
+   "date": "2026-01-12",
+   "description": "STANDING ORDER RENT",
+   "amount": -95000
+  },
+  {
+   "date": "2026-01-14",
+   "description": "CARD PURCHASE AMAZON PRIME",
+   "amount": -899
+  },
+  {
+   "date": "2026-01-20",
+   "description": "CASH WITHDRAWAL",
+   "amount": -5000
+  }
+ ],
+ "opening": 154300,
+ "closing": 364695,
+ "kind": "pdf"
+}

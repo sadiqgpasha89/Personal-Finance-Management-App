@@ -1,0 +1,45 @@
+# Production-style deployment. Only `core` is published; every other service lives on the private network.
+#   cp deploy/.env.example deploy/.env   (set INTERNAL_API_SECRET and friends)
+#   npm run model:download               (puts the Llama GGUF in services/assistant/models)
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build
+name: ledgerly
+x-common: &common { restart: unless-stopped, networks: [backend], read_only: true, tmpfs: [/tmp], security_opt: ["no-new-privileges:true"], cap_drop: [ALL] }
+services:
+  core:
+    <<: *common
+    build: { context: .., dockerfile: deploy/Dockerfile.core }
+    ports: ["3100:3100"]
+    networks: [backend, edge]
+    environment: &env
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?set INTERNAL_API_SECRET (32+ random chars)}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3100}
+      AGGREGATOR_URL: http://aggregator:3201
+      BUREAU_URL: http://bureau:3202
+      ASSISTANT_URL: http://assistant:3203
+    volumes: [core-data:/data]
+    depends_on: { aggregator: { condition: service_healthy }, bureau: { condition: service_healthy }, assistant: { condition: service_healthy } }
+  aggregator:
+    <<: *common
+    build: { context: .., dockerfile: deploy/Dockerfile.service, args: { SERVICE: aggregator } }
+    environment: { INTERNAL_API_SECRET: "${INTERNAL_API_SECRET}", PORT: "3201", DATA_DIR: /data, PUBLIC_URL: "${AGGREGATOR_PUBLIC_URL:-http://localhost:3201}", ALLOWED_REDIRECT_ORIGINS: "${PUBLIC_URL:-http://localhost:3100}", AA_MODE: "${AA_MODE:-sandbox}", AA_BASE_URL: "${AA_BASE_URL:-}", FIU_ID: "${FIU_ID:-}", FIU_API_KEY: "${FIU_API_KEY:-}", FIU_PRIVATE_KEY_PEM: "${FIU_PRIVATE_KEY_PEM:-}", AA_PUBLIC_KEY_PEM: "${AA_PUBLIC_KEY_PEM:-}", AA_REDIRECT_TEMPLATE: "${AA_REDIRECT_TEMPLATE:-}" }
+    networks: [backend, edge]            # needs outbound access to the Account Aggregator
+    ports: ["${AGGREGATOR_PUBLISH:-127.0.0.1:3201}:3201"]   # only the sandbox consent screen / AA webhook needs to be reachable by the user's browser
+    volumes: [aggregator-data:/data]
+  bureau:
+    <<: *common
+    build: { context: .., dockerfile: deploy/Dockerfile.service, args: { SERVICE: bureau } }
+    networks: [backend, edge]            # outbound only matters for a live bureau partner; remove 'edge' in sandbox mode
+    environment: { INTERNAL_API_SECRET: "${INTERNAL_API_SECRET}", PORT: "3202", BUREAU_PROVIDER: "${BUREAU_PROVIDER:-sandbox}", BUREAU_BASE_URL: "${BUREAU_BASE_URL:-}", BUREAU_API_KEY: "${BUREAU_API_KEY:-}" }
+  assistant:
+    <<: *common
+    build: { context: .., dockerfile: deploy/Dockerfile.assistant }
+    environment: { INTERNAL_API_SECRET: "${INTERNAL_API_SECRET}", PORT: "3203", CORE_URL: "http://core:3100", RETENTION_DAYS: "${CHAT_RETENTION_DAYS:-90}" }
+    volumes: [assistant-data:/data, "../services/assistant/models:/models:ro"]
+    deploy: { resources: { limits: { memory: 2g } } }
+  scheduler:
+    <<: *common
+    build: { context: .., dockerfile: deploy/Dockerfile.service, args: { SERVICE: scheduler } }
+    environment: { INTERNAL_API_SECRET: "${INTERNAL_API_SECRET}", PORT: "3204", CORE_URL: "http://core:3100", SCHEDULER_INTERVAL_S: "${SCHEDULER_INTERVAL_S:-300}" }
+# `backend` has no route to the internet. The assistant and scheduler live only there, so the on-device model cannot send anything out.
+networks: { backend: { internal: true }, edge: {} }
+volumes: { core-data: {}, aggregator-data: {}, assistant-data: {} }

@@ -1,0 +1,55 @@
+'use client';
+import Link from 'next/link';
+import { useState } from 'react';
+import { api, ApiFail, invalidate, useApi } from '@/lib/client';
+import { ErrorBox, Money, PageHeader } from '@/components/ui';
+
+export default function ImportPage() {
+  const accts = useApi<any[]>('/accounts'); const [acct, setAcct] = useState(''); const [csv, setCsv] = useState(''); const [name, setName] = useState('');
+  const [pv, setPv] = useState<any>(null); const [map, setMap] = useState<any>(null); const [err, setErr] = useState(''); const [done, setDone] = useState<any>(null); const [skipDup, setSkipDup] = useState(true); const [busy, setBusy] = useState(false); const [fmt, setFmt] = useState('ymd'); const [file, setFile] = useState<File | null>(null); const [stmt, setStmt] = useState<any>(null); const [pw, setPw] = useState(''); const [needPw, setNeedPw] = useState(false);
+  const kindOf = (f: File) => (/\.pdf$/i.test(f.name) ? 'pdf' : /\.(ofx|qfx)$/i.test(f.name) ? 'ofx' : /\.qif$/i.test(f.name) ? 'qif' : null);
+  const preview = async (m?: any, csvOverride?: string) => { setErr(''); setBusy(true); try { const r = await api<any>('/import/preview', { body: { csv: csvOverride ?? csv, account_id: +acct, mapping: m ? { ...m, dateFormat: fmt } : undefined } }); setPv(r); setMap(r.mapping ?? m ?? { date: 0, description: 1, amount: 2 }); } catch (e) { setErr((e as ApiFail).message); } finally { setBusy(false); } };
+  const onFile = async (f?: File) => { if (!f) return; setErr(''); setStmt(null); setPv(null); setDone(null); setNeedPw(false); setPw(''); const big = kindOf(f) === 'pdf' ? 11e6 : 8e6; if (f.size > big) return setErr(`File is larger than ${big / 1e6} MB`); setName(f.name);
+    if (kindOf(f)) { setFile(f); setCsv(''); } else { setFile(null); setCsv(await f.text()); } };
+  const readStatement = async (useAi = false) => {
+    if (!file) return; const kind = kindOf(file)!; setErr(''); setBusy(true); setPv(null);
+    try {
+      const data = kind === 'pdf' ? await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] ?? ''); fr.onerror = () => rej(new Error('Could not read the file')); fr.readAsDataURL(file); }) : await file.text();
+      const r = await api<any>('/import/statement', { body: { filename: file.name, kind, data, account_id: +acct, password: pw || undefined, use_ai: useAi } });
+      setStmt(r); setCsv(r.csv); setNeedPw(false); setFmt('ymd'); setBusy(false); await preview(undefined, r.csv);
+    } catch (e) { const m = (e as ApiFail).message; if ((e as ApiFail).status === 422 && /password/i.test(m)) setNeedPw(true); setErr(m); } finally { setBusy(false); }
+  };
+  const commit = async () => { setBusy(true); try { setDone(await api('/import/commit', { body: { csv, account_id: +acct, mapping: { ...map, dateFormat: fmt }, skip_duplicates: skipDup, source: name.slice(0, 40) } })); invalidate(); } catch (e) { setErr((e as ApiFail).message); } finally { setBusy(false); } };
+  const cols: string[] = pv?.header ?? [];
+  const Sel = ({ k, optional }: { k: string; optional?: boolean }) => <select className="input" value={map?.[k] ?? ''} onChange={(e) => setMap({ ...map, [k]: e.target.value === '' ? undefined : +e.target.value })}>{optional && <option value="">— none —</option>}{cols.map((c, i) => <option key={i} value={i}>{c || `Column ${i + 1}`}</option>)}</select>;
+  return <>
+    <PageHeader title="Import transactions" sub="Upload a bank statement (PDF, OFX/QFX, QIF) or a CSV. We read it, check it against the statement totals, flag duplicates, and you review before anything is saved." />
+    {done ? <div className="card"><p className="text-lg font-medium text-good">Imported {done.imported} transactions ✓</p><p className="text-sm text-mute mt-1">{done.skipped_duplicates} duplicates skipped · {done.auto_categorized} categorized automatically · {done.errors} rows had errors</p>
+      <div className="flex gap-2 mt-4"><Link className="btn btn-primary" href="/transactions?uncategorized=1">Review uncategorized</Link><button className="btn" onClick={async () => { await api(`/import/${done.batch}/undo`, { body: {} }); invalidate(); setDone(null); setPv(null); }}>Undo import</button></div></div> : <>
+      <div className="card mb-4 grid sm:grid-cols-2 gap-4">
+        <div><label className="label" htmlFor="acct">Import into account</label><select id="acct" className="input" value={acct} onChange={(e) => setAcct(e.target.value)}><option value="">Choose…</option>{accts.data?.filter((a) => !a.is_archived).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+        <div><label className="label" htmlFor="file">Statement or CSV file</label><input id="file" type="file" accept=".pdf,.ofx,.qfx,.qif,.csv,text/csv,.txt" className="input" onChange={(e) => onFile(e.target.files?.[0])} /></div>
+        <div className="sm:col-span-2 flex items-center gap-3"><button className="btn btn-primary" disabled={!acct || (!csv && !file) || busy} onClick={() => (file ? readStatement() : preview())}>{busy ? 'Reading…' : file ? 'Read statement' : 'Preview'}</button>{(csv || file) && <span className="text-sm text-mute">{name} loaded</span>}{needPw && <input type="password" className="input max-w-[220px]" placeholder="PDF password" aria-label="PDF password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="off" />}</div>
+        <p className="text-xs text-mute sm:col-span-2">PDFs must have selectable text (downloaded from your bank, not a scan or photo). Password-protected PDFs ask for the password, which is used once and never stored. Want to try it first? <a className="underline" href="/samples/sample-checking.pdf" download>sample checking PDF</a> · <a className="underline" href="/samples/sample-creditcard.pdf" download>sample card PDF</a> · <a className="underline" href="/samples/sample.ofx" download>sample OFX</a> (synthetic data).<br />For CSV, columns are detected automatically (a single Amount or separate Debit/Credit columns), or paste rows with <code>Date,Description,Amount</code> below.</p>
+        <textarea className="input sm:col-span-2 font-mono text-xs" rows={3} placeholder="…or paste CSV here" value={csv} onChange={(e) => { setCsv(e.target.value); setPv(null); }} aria-label="Paste CSV" /></div>
+      {err && <ErrorBox msg={err} />}
+      {stmt && <div className="card mb-4" role="status"><div className="flex flex-wrap items-center gap-2 mb-2"><h2 className="font-medium">Statement read</h2><span className="chip">{{ 'pdf-text': 'PDF text', ofx: 'OFX/QFX', qif: 'QIF', ai: 'AI-assisted' }[stmt.parser as string] ?? stmt.parser}{stmt.pages ? ` · ${stmt.pages} page${stmt.pages > 1 ? 's' : ''}` : ''}</span>
+        <span className={`chip ${stmt.confidence === 'high' ? 'text-good' : stmt.confidence === 'low' ? 'text-bad' : 'text-warn'}`}>{stmt.confidence} confidence</span></div>
+        <p className="text-sm"><b>{stmt.row_count}</b> transactions{stmt.period ? ` · ${stmt.period.start} to ${stmt.period.end}` : ''} · in <Money v={stmt.total_in} /> · out <Money v={stmt.total_out} />{stmt.credit_card ? ' · credit card' : ''}</p>
+        {stmt.reconciled === true && <p className="text-sm text-good mt-1">✓ Matches the statement: opening <Money v={stmt.opening} /> {stmt.credit_card ? '−' : '+'} transactions = closing <Money v={stmt.closing} />.</p>}
+        {stmt.reconciled === false && <p className="text-sm text-bad mt-1">⚠ Does not match the statement totals (off by <Money v={Math.abs(stmt.difference)} />). Some rows may be missing or have the wrong sign. Review carefully.</p>}
+        {stmt.reconciled === null && <p className="text-sm text-mute mt-1">No balances to check against, so review the rows below yourself.</p>}
+        {stmt.warnings.length > 0 && <ul className="text-xs text-mute list-disc pl-5 mt-2">{stmt.warnings.map((w: string) => <li key={w}>{w}</li>)}</ul>}
+        {stmt.ai_available && stmt.parser !== 'ai' && stmt.confidence !== 'high' && <div className="mt-3 text-sm"><button className="btn" disabled={busy} onClick={() => readStatement(true)}>Re-read with AI</button><span className="text-xs text-mute ml-2">Sends the statement text, with long account numbers masked, to the external AI provider your operator enabled.</span></div>}</div>}
+      {pv && <>
+        <div className={`card mb-4 ${stmt && !pv.needs_mapping ? 'hidden' : ''}`}><h2 className="font-medium mb-3">Map columns {pv.needs_mapping && <span className="chip text-warn">couldn't detect automatically</span>}</h2>
+          <div className="grid sm:grid-cols-3 gap-3"><div><span className="label">Date</span><Sel k="date" /></div><div><span className="label">Description</span><Sel k="description" /></div><div><span className="label">Amount</span><Sel k="amount" optional /></div><div><span className="label">Debit (if separate)</span><Sel k="debit" optional /></div><div><span className="label">Credit (if separate)</span><Sel k="credit" optional /></div>
+            <div><label className="label" htmlFor="df">Date format</label><select id="df" className="input" value={fmt} onChange={(e) => setFmt(e.target.value)}><option value="ymd">YYYY-MM-DD</option><option value="mdy">MM/DD/YYYY</option><option value="dmy">DD/MM/YYYY</option></select></div></div>
+          <label className="flex gap-2 text-sm mt-3"><input type="checkbox" checked={!!map?.invert} onChange={(e) => setMap({ ...map, invert: e.target.checked })} /> Invert signs (my bank shows spending as positive)</label>
+          <button className="btn mt-3" onClick={() => preview(map)}>Re-run preview</button></div>
+        <div className="card !p-0 overflow-x-auto mb-4"><div className="p-3 flex flex-wrap justify-between gap-2 items-center"><p className="text-sm"><b>{pv.total}</b> rows ready · <b className={pv.duplicates ? 'text-warn' : ''}>{pv.duplicates}</b> likely duplicates · <b className={pv.error_count ? 'text-bad' : ''}>{pv.error_count}</b> errors</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} /> Skip duplicates</label></div>
+          <table className="w-full min-w-[520px]"><thead><tr><th className="th">Date</th><th className="th">Description</th><th className="th text-right">Amount</th><th className="th">Status</th></tr></thead><tbody>{pv.rows.slice(0, 15).map((r: any) => <tr key={r.line}><td className="td num">{r.date}</td><td className="td">{r.description}</td><td className="td text-right"><Money v={r.amount} colored /></td><td className="td">{r.duplicate ? <span className="chip text-warn">Duplicate</span> : r.repeated_in_file ? <span className="chip">Repeated in file</span> : <span className="chip text-good">New</span>}</td></tr>)}</tbody></table>
+          {pv.errors.length > 0 && <div className="p-3 border-t border-line text-sm text-bad">{pv.errors.slice(0, 5).map((e: any) => <p key={e.line}>Line {e.line}: {e.reason}</p>)}</div>}</div>
+        <button className="btn btn-primary" disabled={busy || !pv.total || pv.needs_mapping} onClick={commit}>Import {skipDup ? pv.total - pv.duplicates : pv.total} transactions</button></>}</>}
+  </>;
+}

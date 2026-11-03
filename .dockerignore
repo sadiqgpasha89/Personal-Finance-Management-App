@@ -1,0 +1,6 @@
+**/node_modules
+**/.next
+**/data
+services/assistant/models
+.git
+**/*.db*
